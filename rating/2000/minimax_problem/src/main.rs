@@ -1,0 +1,226 @@
+macro_rules! result {
+    ($($arg:tt)*) => {
+        #[cfg(feature = "arne-local")]
+        {
+            print!("Result is: ");
+        }
+        println!($($arg)*);
+    };
+}
+fn find_pair(lines: &Vec<Vec<u64>>, min: u64, m: usize) -> Option<(usize, usize)> {
+    let mut bins = vec![vec![];1 << m];
+
+    let mut full = (1<<m) - 1;
+    //println!("full: {full:b}");
+
+    for i in 0..lines.len() {
+        let line = &lines[i];
+        let mut bin = 0;
+        for j in 0..line.len() {
+            if line[j] >= min {
+                bin |= 1 << j;
+            }
+        }
+        bins[bin].push(i);
+    }
+
+    for i in 0..bins.len() {
+        for j in i..bins.len() {
+            if i | j == full {
+                // println!("test");
+                if bins[i].len() > 0 && bins[j].len() > 0 {
+                    return Some((*bins[i].last().unwrap(), *bins[j].last().unwrap()));
+                }
+            }
+        }
+    }
+    None
+}
+fn solve(s: &mut String) {
+    let [n, m] = read_vals_t(s, 0usize);
+
+    let mut min = u64::MAX;
+    let mut max = u64::MIN;
+    let mut lines = vec![];
+    for _ in 0..n {
+        let a: Vec<u64> = read_arr(s);
+
+        min = min.min(*a.iter().min().unwrap());
+        max = max.max(*a.iter().max().unwrap());
+
+        lines.push(a);
+    }
+
+    let min_inv = binary_edge(|min_inv: u64| {
+        let min = max - min_inv;
+        find_pair(&lines, min, m).is_some()
+    }, 0, max - min);
+    let min = max - min_inv;
+    // println!("min: {min}");
+
+    let (a, b) = find_pair(&lines, min, m).unwrap();
+
+    result!("{} {}", a + 1, b + 1);
+}
+fn main() {
+    let mut s = String::new();
+
+    //let [n_t] = read_vals(&mut s);
+
+    // for _ in 0..n_t {
+        solve(&mut s);
+    //}
+}
+use std::{
+    fmt::Debug,
+    io::stdin,
+    ops::{Add, AddAssign, Div, Mul, MulAssign, Rem, RemAssign, Sub},
+    str::FromStr, u64,
+};
+/// Returns the x of the first true Value
+fn binary_edge<F, X>(f: F, min_x: X, max_x: X) -> X
+where
+    F: Fn(X) -> bool,
+    X: PartialOrd
+        + PartialEq
+        + Add<Output = X>
+        + Sub<Output = X>
+        + Div<Output = X>
+        + Copy
+        + From<u8>,
+{
+    if f(min_x) {
+        return min_x;
+    }
+    let mut a = min_x;
+    let mut b = max_x;
+    loop {
+        let mid = (a + b) / 2.into();
+        let mv = f(mid);
+
+        if mv {
+            b = mid;
+        } else {
+            a = mid;
+        }
+
+        if b - a == 1.into() {
+            break b;
+        }
+    }
+}
+
+fn read_vals_t<T, const N: usize>(s: &mut String, elt: T) -> [T; N]
+where
+    T: FromStr,
+    <T as FromStr>::Err: Debug,
+    T: Debug,
+{
+    read_vals::<N, T>(s)
+}
+
+#[allow(invalid_type_param_default)]
+fn read_vals<const N: usize, T = i128>(s: &mut String) -> [T; N]
+where
+    T: FromStr,
+    <T as FromStr>::Err: Debug,
+    T: Debug,
+{
+    read_arr(s).try_into().unwrap()
+}
+fn read_arr<T>(s: &mut String) -> Vec<T>
+where
+    T: FromStr,
+    <T as FromStr>::Err: Debug,
+{
+    read_line(s);
+    s.trim()
+        .split(" ")
+        .map(|v| v.parse::<T>().unwrap())
+        .collect()
+}
+fn read_line(s: &mut String) {
+    s.clear();
+    stdin().read_line(s).unwrap();
+}
+fn pow_mod<T>(mut b: T, mut e: T, mod_n: T) -> T
+where
+    T: From<u64>
+        + PartialOrd
+        + Rem<Output = T>
+        + RemAssign
+        + Eq
+        + MulAssign
+        + std::ops::ShrAssign<i32>
+        + Copy,
+{
+    let mut r = T::from(1);
+    while e > 0u64.into() {
+        if e % 2u64.into() == 1u64.into() {
+            r *= b;
+            r %= mod_n;
+        }
+        b *= b;
+        b %= mod_n;
+        e >>= 1;
+    }
+    r
+}
+fn div_mod<T>(zähler: T, nenner: T, mod_n: T) -> T
+where
+    T: From<u64>
+        + PartialOrd
+        + Rem<Output = T>
+        + RemAssign
+        + Eq
+        + MulAssign
+        + std::ops::ShrAssign<i32>
+        + Copy
+        + Mul<Output = T>
+        + Sub<Output = T>,
+{
+    (zähler * pow_mod(nenner, mod_n - 2u64.into(), mod_n)) % mod_n
+}
+fn fac_mod<T>(n: T, mod_n: T) -> T
+where
+    T: From<u64>
+        + PartialOrd
+        + Rem<Output = T>
+        + RemAssign
+        + Eq
+        + MulAssign
+        + std::ops::ShrAssign<i32>
+        + Copy
+        + Mul<Output = T>
+        + Sub<Output = T>
+        + AddAssign,
+{
+    let mut r = 1u64.into();
+    let mut i = 1u64.into();
+    while i <= n {
+        r *= i;
+        r %= mod_n;
+        i += 1u64.into();
+    }
+    r
+}
+fn binomial_koef_mod<T>(n: T, k: T, mod_n: T) -> T
+where
+    T: From<u64>
+        + PartialOrd
+        + Rem<Output = T>
+        + RemAssign
+        + Eq
+        + MulAssign
+        + std::ops::ShrAssign<i32>
+        + Copy
+        + Mul<Output = T>
+        + Sub<Output = T>
+        + AddAssign,
+{
+    div_mod(
+        fac_mod(n, mod_n),
+        (fac_mod(n - k, mod_n) * fac_mod(k, mod_n)) % mod_n,
+        mod_n,
+    )
+}
